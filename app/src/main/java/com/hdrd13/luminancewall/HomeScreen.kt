@@ -318,7 +318,7 @@ fun HomeScreen(
                     GlassButton(
                         backdrop = rootBackdrop,
                         label = "Customize",
-                        modifier = Modifier.width(200.dp).align(Alignment.Center),
+                        modifier = Modifier.width(180.dp).align(Alignment.Center),
                         surfaceColor = Color.White.copy(0.15f),
                         refractionColors = currentRenderColors,
                         onClick = { onPresetClick(currentPreset!!) }
