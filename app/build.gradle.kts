@@ -70,3 +70,7 @@ dependencies {
     implementation(libs.kyant.liquid.glass)
     implementation(libs.kyant.shapes)
 }
+
+base {
+    archivesName.set("LuminanceWall-v1.0")
+}
