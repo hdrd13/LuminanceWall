@@ -475,21 +475,26 @@ fun NewPresetCard(
             .width(cardWidth)
             .height(cardHeight)
             .clip(RoundedRectangle(28.dp))
-            .background(Color(0xFF1C1C1C))
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.15f), Color.Transparent)
-                ),
-                shape = RoundedRectangle(28.dp)
-            ),
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        Box(modifier = Modifier.matchParentSize().layerBackdrop(cardBackdrop))
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF1C1C1C))
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.15f), Color.Transparent)
+                    ),
+                    shape = RoundedRectangle(28.dp)
+                )
+                .layerBackdrop(cardBackdrop)
+        )
 
         CircularGlassIconButton(
             backdrop = cardBackdrop,
-            surfaceColor = Color(0xFF222222),
+            surfaceColor = Color.White.copy(alpha = 0.08f),
             icon = {
                 Icon(
                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_add),
@@ -535,7 +540,7 @@ fun GlassDeleteDialog(
                             brightness = if (isLightTheme) 0.2f else 0f,
                             saturation = 1.5f
                         )
-                        blur(if (isLightTheme) 16f.dp.toPx() else 8f.dp.toPx())
+                        blur(if (isLightTheme) 16f.dp.toPx() else 24f.dp.toPx())
                         lens(24f.dp.toPx(), 48f.dp.toPx(), true)
                     },
                     highlight = { Highlight.Plain },
@@ -625,7 +630,7 @@ fun GlassOptionsDialog(
                             brightness = if (isLightTheme) 0.2f else 0f,
                             saturation = 1.5f
                         )
-                        blur(if (isLightTheme) 16f.dp.toPx() else 8f.dp.toPx())
+                        blur(if (isLightTheme) 16f.dp.toPx() else 24f.dp.toPx())
                         lens(24f.dp.toPx(), 48f.dp.toPx(), true)
                     },
                     highlight = { Highlight.Plain },
@@ -713,7 +718,7 @@ fun GlassRenameDialog(
                     shape = { RoundedRectangle(48f.dp) },
                     effects = {
                         colorControls(if (isLightTheme) 0.2f else 0f, 1.5f)
-                        blur(if (isLightTheme) 16f.dp.toPx() else 8f.dp.toPx())
+                        blur(if (isLightTheme) 16f.dp.toPx() else 24f.dp.toPx())
                         lens(24f.dp.toPx(), 48f.dp.toPx(), true)
                     },
                     highlight = { Highlight.Plain },
