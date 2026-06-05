@@ -457,7 +457,7 @@ fun EditorColorPicker(
 ) {
     val isLightTheme = !isSystemInDarkTheme()
     val contentColor = if (isLightTheme) Color.Black else Color.White
-    val containerColor = if (isLightTheme) Color(0xFFFAFAFA).copy(alpha = 0.6f) else Color(0xFF121212).copy(alpha = 0.4f)
+    val containerColor = if (isLightTheme) Color(0xFFF2F2F7).copy(alpha = 0.75f) else Color(0xFF1E1E1E).copy(alpha = 0.45f)
 
     val pickerBackdrop = rememberLayerBackdrop { drawContent() }
 
@@ -469,12 +469,24 @@ fun EditorColorPicker(
                 exportedBackdrop = pickerBackdrop,
                 shape = { RoundedRectangle(40f.dp) },
                 effects = {
-                    colorControls(brightness = if (isLightTheme) 0.2f else 0f, saturation = 1.5f)
-                    blur(if (isLightTheme) 16f.dp.toPx() else 24f.dp.toPx())
-                    lens(24f.dp.toPx(), 48f.dp.toPx(), true)
+                    colorControls(
+                        brightness = if (isLightTheme) 0.15f else 0.02f,
+                        saturation = if (isLightTheme) 1.4f else 1.3f
+                    )
+                    blur(if (isLightTheme) 28f.dp.toPx() else 36f.dp.toPx())
                 },
                 highlight = { Highlight.Plain },
-                onDrawSurface = { drawRect(containerColor) }
+                onDrawSurface = {
+                    drawRect(containerColor)
+                    // Draw premium iOS glass border highlight
+                    val outlineColor = if (isLightTheme) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
+                    drawRoundRect(
+                        color = outlineColor,
+                        size = size,
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(40f.dp.toPx()),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5.dp.toPx())
+                    )
+                }
             )
             .fillMaxWidth()
             .padding(vertical = 20.dp),
@@ -545,8 +557,8 @@ fun EditorActionDialog(
     val isLightTheme = !isSystemInDarkTheme()
     val contentColor = if (isLightTheme) Color.Black else Color.White
     val accentColor = if (isLightTheme) Color(0xFF0088FF) else Color(0xFF0091FF)
-    val containerColor = if (isLightTheme) Color(0xFFFAFAFA).copy(alpha = 0.6f) else Color(0xFF121212).copy(alpha = 0.4f)
-    val buttonBgColor = containerColor.copy(alpha = 0.2f)
+    val containerColor = if (isLightTheme) Color(0xFFF2F2F7).copy(alpha = 0.75f) else Color(0xFF1E1E1E).copy(alpha = 0.45f)
+    val buttonBgColor = if (isLightTheme) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.08f)
 
     Box(
         modifier = Modifier
@@ -561,9 +573,11 @@ fun EditorActionDialog(
                     exportedBackdrop = dialogBackdrop,
                     shape = { RoundedRectangle(48f.dp) },
                     effects = {
-                        colorControls(brightness = if (isLightTheme) 0.2f else 0f, saturation = 1.5f)
-                        blur(if (isLightTheme) 16f.dp.toPx() else 24f.dp.toPx())
-                        lens(24f.dp.toPx(), 48f.dp.toPx(), true)
+                        colorControls(
+                            brightness = if (isLightTheme) 0.15f else 0.02f,
+                            saturation = if (isLightTheme) 1.4f else 1.3f
+                        )
+                        blur(if (isLightTheme) 28f.dp.toPx() else 36f.dp.toPx())
                     },
                     highlight = { Highlight.Plain },
                     onDrawSurface = {
@@ -575,6 +589,14 @@ fun EditorActionDialog(
                                 blendMode = BlendMode.Screen
                             )
                         }
+                        // Draw premium iOS glass border highlight
+                        val outlineColor = if (isLightTheme) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
+                        drawRoundRect(
+                            color = outlineColor,
+                            size = size,
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(48f.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5.dp.toPx())
+                        )
                     }
                 )
                 .fillMaxWidth()

@@ -528,8 +528,8 @@ fun GlassDeleteDialog(
     val isLightTheme = !isSystemInDarkTheme()
     val contentColor = if (isLightTheme) Color.Black else Color.White
     val accentColor = if (isLightTheme) Color(0xFF0088FF) else Color(0xFF0091FF)
-    val containerColor = if (isLightTheme) Color(0xFFFAFAFA).copy(alpha = 0.6f) else Color(0xFF121212).copy(alpha = 0.4f)
-    val buttonBgColor = containerColor.copy(alpha = 0.2f)
+    val containerColor = if (isLightTheme) Color(0xFFF2F2F7).copy(alpha = 0.75f) else Color(0xFF1E1E1E).copy(alpha = 0.45f)
+    val buttonBgColor = if (isLightTheme) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.08f)
 
     Box(
         modifier = Modifier
@@ -545,11 +545,10 @@ fun GlassDeleteDialog(
                     shape = { RoundedRectangle(48f.dp) },
                     effects = {
                         colorControls(
-                            brightness = if (isLightTheme) 0.2f else 0f,
-                            saturation = 1.5f
+                            brightness = if (isLightTheme) 0.15f else 0.02f,
+                            saturation = if (isLightTheme) 1.4f else 1.3f
                         )
-                        blur(if (isLightTheme) 16f.dp.toPx() else 24f.dp.toPx())
-                        lens(24f.dp.toPx(), 48f.dp.toPx(), true)
+                        blur(if (isLightTheme) 28f.dp.toPx() else 36f.dp.toPx())
                     },
                     highlight = { Highlight.Plain },
                     onDrawSurface = {
@@ -561,6 +560,14 @@ fun GlassDeleteDialog(
                                 blendMode = BlendMode.Screen
                             )
                         }
+                        // Draw premium iOS glass border highlight
+                        val outlineColor = if (isLightTheme) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
+                        drawRoundRect(
+                            color = outlineColor,
+                            size = size,
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(48f.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5.dp.toPx())
+                        )
                     }
                 )
                 .fillMaxWidth()
@@ -618,8 +625,8 @@ fun GlassOptionsDialog(
     val isLightTheme = !isSystemInDarkTheme()
     val contentColor = if (isLightTheme) Color.Black else Color.White
     val accentColor = if (isLightTheme) Color(0xFF0088FF) else Color(0xFF0091FF)
-    val containerColor = if (isLightTheme) Color(0xFFFAFAFA).copy(alpha = 0.6f) else Color(0xFF121212).copy(alpha = 0.4f)
-    val buttonBgColor = containerColor.copy(alpha = 0.2f)
+    val containerColor = if (isLightTheme) Color(0xFFF2F2F7).copy(alpha = 0.75f) else Color(0xFF1E1E1E).copy(alpha = 0.45f)
+    val buttonBgColor = if (isLightTheme) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.08f)
 
     Box(
         modifier = Modifier
@@ -635,11 +642,10 @@ fun GlassOptionsDialog(
                     shape = { RoundedRectangle(48f.dp) },
                     effects = {
                         colorControls(
-                            brightness = if (isLightTheme) 0.2f else 0f,
-                            saturation = 1.5f
+                            brightness = if (isLightTheme) 0.15f else 0.02f,
+                            saturation = if (isLightTheme) 1.4f else 1.3f
                         )
-                        blur(if (isLightTheme) 16f.dp.toPx() else 24f.dp.toPx())
-                        lens(24f.dp.toPx(), 48f.dp.toPx(), true)
+                        blur(if (isLightTheme) 28f.dp.toPx() else 36f.dp.toPx())
                     },
                     highlight = { Highlight.Plain },
                     onDrawSurface = {
@@ -651,6 +657,14 @@ fun GlassOptionsDialog(
                                 blendMode = BlendMode.Screen
                             )
                         }
+                        // Draw premium iOS glass border highlight
+                        val outlineColor = if (isLightTheme) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
+                        drawRoundRect(
+                            color = outlineColor,
+                            size = size,
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(48f.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5.dp.toPx())
+                        )
                     }
                 )
                 .fillMaxWidth()
@@ -714,7 +728,8 @@ fun GlassRenameDialog(
     val dialogBackdrop = rememberLayerBackdrop { drawContent() }
     val isLightTheme = !isSystemInDarkTheme()
     val contentColor = if (isLightTheme) Color.Black else Color.White
-    val containerColor = if (isLightTheme) Color(0xFFFAFAFA).copy(0.6f) else Color(0xFF121212).copy(0.4f)
+    val containerColor = if (isLightTheme) Color(0xFFF2F2F7).copy(alpha = 0.75f) else Color(0xFF1E1E1E).copy(alpha = 0.45f)
+    val buttonBgColor = if (isLightTheme) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.08f)
     var text by remember { mutableStateOf(initialName) }
 
     Box(Modifier.fillMaxWidth().padding(horizontal = 32.dp).clickable(null, null) {}) {
@@ -725,9 +740,11 @@ fun GlassRenameDialog(
                     exportedBackdrop = dialogBackdrop,
                     shape = { RoundedRectangle(48f.dp) },
                     effects = {
-                        colorControls(if (isLightTheme) 0.2f else 0f, 1.5f)
-                        blur(if (isLightTheme) 16f.dp.toPx() else 24f.dp.toPx())
-                        lens(24f.dp.toPx(), 48f.dp.toPx(), true)
+                        colorControls(
+                            brightness = if (isLightTheme) 0.15f else 0.02f,
+                            saturation = if (isLightTheme) 1.4f else 1.3f
+                        )
+                        blur(if (isLightTheme) 28f.dp.toPx() else 36f.dp.toPx())
                     },
                     highlight = { Highlight.Plain },
                     onDrawSurface = {
@@ -735,6 +752,14 @@ fun GlassRenameDialog(
                         if (refractionColors.isNotEmpty()) {
                             drawRect(Brush.horizontalGradient(refractionColors), alpha = 0.15f, blendMode = BlendMode.Screen)
                         }
+                        // Draw premium iOS glass border highlight
+                        val outlineColor = if (isLightTheme) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
+                        drawRoundRect(
+                            color = outlineColor,
+                            size = size,
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(48f.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5.dp.toPx())
+                        )
                     }
                 )
                 .fillMaxWidth()
@@ -758,7 +783,7 @@ fun GlassRenameDialog(
             Spacer(Modifier.height(24.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 DialogButton("Save", Color.White, if (isLightTheme) Color(0xFF0088FF) else Color(0xFF0091FF), { onConfirm(text) }, Modifier.fillMaxWidth())
-                DialogButton("Cancel", contentColor, containerColor.copy(0.2f), onCancel, Modifier.fillMaxWidth())
+                DialogButton("Cancel", contentColor, buttonBgColor, onCancel, Modifier.fillMaxWidth())
             }
         }
     }
