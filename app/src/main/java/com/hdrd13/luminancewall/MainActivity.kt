@@ -39,10 +39,15 @@ import androidx.navigation.navArgument
 import kotlinx.coroutines.delay
 import com.hdrd13.luminancewall.ui.theme.Typography
 
+import androidx.activity.SystemBarStyle
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         setContent {
             val context = LocalContext.current
             MaterialTheme(colorScheme = if (isSystemInDarkTheme()) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context), typography = Typography) {
