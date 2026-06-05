@@ -342,7 +342,7 @@ fun HomeScreen(
         val dimColor = if (isLightTheme) Color(0xFF29293A).copy(alpha = 0.23f) else Color(0xFF121212).copy(alpha = 0.56f)
 
         AnimatedVisibility(
-            visible = showDeleteDialog || showOptionsDialog || showRenameDialog,
+            visible = showDeleteDialog || showOptionsDialog || showRenameDialog || showCreateDialog,
             enter = fadeIn(tween(400, easing = androidx.compose.animation.core.LinearOutSlowInEasing)),
             exit = fadeOut(tween(300, easing = androidx.compose.animation.core.FastOutLinearInEasing))
         ) {
@@ -353,6 +353,8 @@ fun HomeScreen(
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                         showDeleteDialog = false
                         showOptionsDialog = false
+                        showRenameDialog = false
+                        showCreateDialog = false
                     }
             )
         }
@@ -982,13 +984,13 @@ fun CreatePresetDialog(
                 )
                 .fillMaxWidth()
                 .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.Start
         ) {
             Text(
                 text = "New Preset",
                 color = contentColor,
                 fontSize = 20.sp,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Left,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(8.dp))
@@ -996,7 +998,7 @@ fun CreatePresetDialog(
                 text = "Would you like to design your own wallpaper or browse community presets online?",
                 color = contentColor.copy(alpha = 0.68f),
                 fontSize = 14.sp,
-                textAlign = TextAlign.Center,
+                textAlign = TextAlign.Left,
                 lineHeight = 18.sp
             )
             Spacer(Modifier.height(28.dp))

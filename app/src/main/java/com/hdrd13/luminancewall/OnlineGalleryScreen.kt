@@ -283,23 +283,36 @@ fun PresetPreviewCard(
     }
     val paint = remember { android.graphics.Paint() }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(9f / 19.5f)
-            .clip(RoundedCornerShape(18.dp))
-            .border(
-                width = if (isSelected) 3.dp else 1.dp,
-                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(18.dp)
-            )
-            .clickable { onClick() }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            setShaderUniforms(shader, renderColors, renderColors.size.toFloat(), size.width, size.height)
-            paint.shader = shader
-            drawContext.canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, paint)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(9f / 19.5f)
+                .clip(RoundedCornerShape(18.dp))
+                .border(
+                    width = if (isSelected) 3.dp else 1.dp,
+                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(18.dp)
+                )
+                .clickable { onClick() }
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                setShaderUniforms(shader, renderColors, renderColors.size.toFloat(), size.width, size.height)
+                paint.shader = shader
+                drawContext.canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, paint)
+            }
         }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = preset.name,
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
