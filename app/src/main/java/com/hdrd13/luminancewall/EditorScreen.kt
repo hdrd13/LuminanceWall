@@ -89,7 +89,13 @@ import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun EditorScreen(initialColors: List<Color>, cornerRadius: androidx.compose.ui.unit.Dp = 0.dp, onBack: () -> Unit, onSavePreset: (List<Color>) -> Unit) {
+fun EditorScreen(
+    initialColors: List<Color>,
+    isEditable: Boolean,
+    cornerRadius: androidx.compose.ui.unit.Dp = 0.dp,
+    onBack: () -> Unit,
+    onSavePreset: (List<Color>) -> Unit
+) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -197,7 +203,7 @@ fun EditorScreen(initialColors: List<Color>, cornerRadius: androidx.compose.ui.u
                         }
                     )
 
-                    if (!isDefaultPreset) {
+                    if (isEditable) {
                         CircularGlassIconButton(
                             backdrop = rootBackdrop,
                             icon = {
@@ -262,8 +268,7 @@ fun EditorScreen(initialColors: List<Color>, cornerRadius: androidx.compose.ui.u
                         withContext(Dispatchers.Main) {
                             isProcessing = false
                             if (uri != null) {
-                                onSavePreset(renderColors)
-                                Toast.makeText(context, "Saved to Presets & Gallery", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Saved to Gallery", Toast.LENGTH_SHORT).show()
                                 showActionDialog = false
                                 onBack()
                             }
@@ -277,7 +282,6 @@ fun EditorScreen(initialColors: List<Color>, cornerRadius: androidx.compose.ui.u
                         withContext(Dispatchers.Main) {
                             isProcessing = false
                             if (uri != null) {
-                                onSavePreset(renderColors)
                                 showActionDialog = false
                                 openWallpaperSetter(context, uri)
                             }

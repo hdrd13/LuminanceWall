@@ -100,7 +100,8 @@ fun HomeScreen(
     onPresetClick: (Preset) -> Unit,
     onNewClick: () -> Unit,
     onDeleteCustom: (Preset) -> Unit,
-    onRenameCustom: (Preset, String) -> Unit
+    onRenameCustom: (Preset, String) -> Unit,
+    onBrowseOnline: () -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -142,6 +143,7 @@ fun HomeScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showOptionsDialog by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
+    var showCreateDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<Preset?>(null) }
     var presetToRename by remember { mutableStateOf<Preset?>(null) }
 
@@ -272,7 +274,7 @@ fun HomeScreen(
                     }
                 } else {
                     Box(modifier = Modifier.width(cardWidth).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        NewPresetCard(cardWidth = cardWidth, cardHeight = cardHeight, onClick = onNewClick)
+                        NewPresetCard(cardWidth = cardWidth, cardHeight = cardHeight, onClick = { showCreateDialog = true })
                     }
                 }
             }
@@ -429,6 +431,25 @@ fun HomeScreen(
                     onCancel = { showRenameDialog = false }
                 )
             }
+        }
+        AnimatedVisibility(
+            visible = showCreateDialog,
+            enter = fadeIn(tween(350, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) + scaleIn(spring(0.82f, 280f), initialScale = 0.85f),
+            exit = fadeOut(tween(250, easing = androidx.compose.animation.core.FastOutLinearInEasing)) + scaleOut(tween(250, easing = androidx.compose.animation.core.FastOutLinearInEasing), targetScale = 0.9f),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            CreatePresetDialog(
+                backdrop = rootBackdrop,
+                onCreateCustom = {
+                    showCreateDialog = false
+                    onNewClick()
+                },
+                onBrowseOnline = {
+                    showCreateDialog = false
+                    onBrowseOnline()
+                },
+                onCancel = { showCreateDialog = false }
+            )
         }
     }
 }
@@ -910,5 +931,101 @@ fun GlassButton(
             fontWeight = FontWeight.Medium,
             fontSize = 16.sp
         )
+    }
+}
+
+@Composable
+fun CreatePresetDialog(
+    backdrop: LayerBackdrop,
+    onCreateCustom: () -> Unit,
+    onBrowseOnline: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val dialogBackdrop = rememberLayerBackdrop { drawContent() }
+    val isLightTheme = !isSystemInDarkTheme()
+    val contentColor = if (isLightTheme) Color.Black else Color.White
+    val containerColor = if (isLightTheme) Color(0xFFF2F2F7).copy(alpha = 0.75f) else Color(0xFF1E1E1E).copy(alpha = 0.45f)
+    val buttonBgColor = if (isLightTheme) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.08f)
+    val accentColor = if (isLightTheme) Color(0xFF0088FF) else Color(0xFF0091FF)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+    ) {
+        Column(
+            modifier = Modifier
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    exportedBackdrop = dialogBackdrop,
+                    shape = { RoundedRectangle(48f.dp) },
+                    effects = {
+                        colorControls(
+                            brightness = if (isLightTheme) 0.15f else 0.02f,
+                            saturation = if (isLightTheme) 1.4f else 1.3f
+                        )
+                        blur(if (isLightTheme) 28f.dp.toPx() else 36f.dp.toPx())
+                    },
+                    highlight = { Highlight.Plain },
+                    onDrawSurface = {
+                        drawRect(containerColor)
+                        // Draw premium iOS glass border highlight
+                        val outlineColor = if (isLightTheme) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
+                        drawRoundRect(
+                            color = outlineColor,
+                            size = size,
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(48f.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5.dp.toPx())
+                        )
+                    }
+                )
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "New Preset",
+                color = contentColor,
+                fontSize = 20.sp,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Would you like to design your own wallpaper or browse community presets online?",
+                color = contentColor.copy(alpha = 0.68f),
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp
+            )
+            Spacer(Modifier.height(28.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                DialogButton(
+                    label = "Create Custom",
+                    textColor = Color.White,
+                    backgroundColor = accentColor,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onCreateCustom
+                )
+
+                DialogButton(
+                    label = "Browse Online",
+                    textColor = contentColor,
+                    backgroundColor = buttonBgColor,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onBrowseOnline
+                )
+
+                DialogButton(
+                    label = "Cancel",
+                    textColor = Color(0xFFFF3B30),
+                    backgroundColor = buttonBgColor,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onCancel
+                )
+            }
+        }
     }
 }

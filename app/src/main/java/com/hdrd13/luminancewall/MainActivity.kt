@@ -127,11 +127,12 @@ fun LuminanceAppRoot() {
                 customPresets = customPresets,
                 onPresetClick = { preset ->
                     val colorsStr = preset.colors.joinToString(",") { it.toArgb().toString() }
-                    navController.navigate("editor/$colorsStr")
+                    val editable = preset.name.startsWith("My Preset")
+                    navController.navigate("editor/$colorsStr/$editable")
                 },
                 onNewClick = {
                     val defaultColorStr = APPLE_COLORS_75[3].toArgb().toString()
-                    navController.navigate("editor/$defaultColorStr")
+                    navController.navigate("editor/$defaultColorStr/true")
                 },
                 onDeleteCustom = { preset ->
                     customPresets = customPresets - preset
@@ -142,15 +143,22 @@ fun LuminanceAppRoot() {
                         if (it == preset) it.copy(name = newName) else it
                     }
                     saveCustomPresets(prefs, customPresets)
+                },
+                onBrowseOnline = {
+                    navController.navigate("online_gallery")
                 }
             )
         }
 
         composable(
-            route = "editor/{colors}",
-            arguments = listOf(navArgument("colors") { type = NavType.StringType })
+            route = "editor/{colors}/{editable}",
+            arguments = listOf(
+                navArgument("colors") { type = NavType.StringType },
+                navArgument("editable") { type = NavType.BoolType }
+            )
         ) { backStackEntry ->
             val colorsStr = backStackEntry.arguments?.getString("colors") ?: ""
+            val isEditable = backStackEntry.arguments?.getBoolean("editable") ?: true
             val initialColors = try {
                 if (colorsStr.isBlank()) listOf(APPLE_COLORS_75[3])
                 else colorsStr.split(",").map { Color(it.toInt()) }
@@ -165,12 +173,32 @@ fun LuminanceAppRoot() {
 
             EditorScreen(
                 initialColors = initialColors,
+                isEditable = isEditable,
                 cornerRadius = cornerRadius,
                 onBack = { navController.popBackStack() },
                 onSavePreset = { colors ->
                     val newPreset = Preset("My Preset ${customPresets.size + 1}", colors)
                     customPresets = customPresets + newPreset
                     saveCustomPresets(prefs, customPresets)
+                }
+            )
+        }
+
+        composable("online_gallery") {
+            OnlineGalleryScreen(
+                onBack = { navController.popBackStack() },
+                onSavePreset = { preset ->
+                    if (!customPresets.any { it.colors == preset.colors }) {
+                        val newPreset = Preset(preset.name, preset.colors)
+                        customPresets = customPresets + newPreset
+                        saveCustomPresets(prefs, customPresets)
+                    }
+                },
+                onCustomizePreset = { preset ->
+                    val colorsStr = preset.colors.joinToString(",") { it.toArgb().toString() }
+                    navController.navigate("editor/$colorsStr/false") {
+                        popUpTo("home")
+                    }
                 }
             )
         }
