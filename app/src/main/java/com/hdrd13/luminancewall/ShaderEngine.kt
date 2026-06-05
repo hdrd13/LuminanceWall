@@ -50,20 +50,36 @@ const val AGSL_SHADER = """
         float phaseShift = float(colIndex) * 0.15;
         float yPos = fract(uv.y + phaseShift - time * 0.08);
 
-        float t = yPos * colorCount;
-        int iColorCount = int(ceil(colorCount));
+        float countFloor = floor(colorCount);
+        float countCeil = ceil(colorCount);
 
-        int idx1 = int(floor(t));
-        if (idx1 >= iColorCount) { idx1 = iColorCount - 1; }
-        int idx2 = idx1 + 1;
-        if (idx2 >= iColorCount) { idx2 = 0; }
+        float tFloor = yPos * countFloor;
+        int iCountFloor = int(countFloor);
+        int idx1Floor = int(floor(tFloor));
+        if (idx1Floor >= iCountFloor) { idx1Floor = iCountFloor - 1; }
+        int idx2Floor = idx1Floor + 1;
+        if (idx2Floor >= iCountFloor) { idx2Floor = 0; }
+        float ftFloor = fract(tFloor);
+        float blendFloor = ftFloor * ftFloor * (3.0 - 2.0 * ftFloor);
+        half3 col1Floor = pow(max(getColor(idx1Floor), half3(0.001)), half3(1.8));
+        half3 col2Floor = pow(max(getColor(idx2Floor), half3(0.001)), half3(1.8));
+        half3 colFloor = pow(mix(col1Floor, col2Floor, half(blendFloor)), half3(1.0 / 1.8));
 
-        float ft = fract(t);
-        float blend = ft * ft * (3.0 - 2.0 * ft);
+        float tCeil = yPos * countCeil;
+        int iCountCeil = int(countCeil);
+        int idx1Ceil = int(floor(tCeil));
+        if (idx1Ceil >= iCountCeil) { idx1Ceil = iCountCeil - 1; }
+        int idx2Ceil = idx1Ceil + 1;
+        if (idx2Ceil >= iCountCeil) { idx2Ceil = 0; }
+        float ftCeil = fract(tCeil);
+        float blendCeil = ftCeil * ftCeil * (3.0 - 2.0 * ftCeil);
+        half3 col1Ceil = pow(max(getColor(idx1Ceil), half3(0.001)), half3(1.8));
+        half3 col2Ceil = pow(max(getColor(idx2Ceil), half3(0.001)), half3(1.8));
+        half3 colCeil = pow(mix(col1Ceil, col2Ceil, half(blendCeil)), half3(1.0 / 1.8));
 
-        half3 col1 = pow(max(getColor(idx1), half3(0.001)), half3(1.8));
-        half3 col2 = pow(max(getColor(idx2), half3(0.001)), half3(1.8));
-        half3 finalColor = pow(mix(col1, col2, half(blend)), half3(1.0 / 1.8));
+        float blendCount = fract(colorCount);
+        float blendCountSmooth = blendCount * blendCount * (3.0 - 2.0 * blendCount);
+        half3 finalColor = mix(colFloor, colCeil, half(blendCountSmooth));
 
         half luma = half(dot(finalColor, half3(0.2126, 0.7152, 0.0722)));
         finalColor = mix(half3(luma), finalColor, half(1.35));
