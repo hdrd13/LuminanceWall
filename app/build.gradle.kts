@@ -32,7 +32,7 @@ android {
         minSdk = 33
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.1"
     }
 
     buildTypes {
@@ -72,5 +72,5 @@ dependencies {
 }
 
 base {
-    archivesName.set("LuminanceWall-v1.0")
+    archivesName.set("LuminanceWall-v1.1")
 }
