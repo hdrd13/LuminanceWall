@@ -65,6 +65,12 @@ const val AGSL_SHADER = """
         half3 col2 = pow(max(getColor(idx2), half3(0.001)), half3(1.8));
         half3 finalColor = pow(mix(col1, col2, half(blend)), half3(1.0 / 1.8));
 
+        half luma = half(dot(finalColor, half3(0.2126, 0.7152, 0.0722)));
+        finalColor = mix(half3(luma), finalColor, half(1.35));
+
+        half3 curved = finalColor * finalColor * (half3(3.0) - half3(2.0) * finalColor);
+        finalColor = mix(finalColor, curved, half(0.35));
+
         float hash = fract(sin(dot(fragCoord.xy, float2(12.9898, 78.233))) * 43758.5453);
         half noise = half((hash - 0.5) * 0.08);
         finalColor += half3(noise);
