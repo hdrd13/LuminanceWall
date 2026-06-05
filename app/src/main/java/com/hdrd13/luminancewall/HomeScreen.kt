@@ -387,13 +387,21 @@ fun HomeScreen(
                 refractionColors = currentRenderColors,
                 onSave = {
                     coroutineScope.launch(Dispatchers.IO) {
-                        exportToPublicGallery(context, currentPreset!!.colors)
+                        val preset = currentPreset!!
+                        val colorsToExport = if (preset.colors.size == 1) {
+                            listOf(preset.colors[0].multiply(0.2f), preset.colors[0], preset.colors[0].multiply(0.8f))
+                        } else preset.colors
+                        exportToPublicGallery(context, colorsToExport)
                     }
                     showOptionsDialog = false
                 },
                 onSetAs = {
                     coroutineScope.launch(Dispatchers.IO) {
-                        val uri = exportToCacheAndGetUri(context, currentPreset!!.colors)
+                        val preset = currentPreset!!
+                        val colorsToExport = if (preset.colors.size == 1) {
+                            listOf(preset.colors[0].multiply(0.2f), preset.colors[0], preset.colors[0].multiply(0.8f))
+                        } else preset.colors
+                        val uri = exportToCacheAndGetUri(context, colorsToExport)
                         withContext(Dispatchers.Main) {
                             if (uri != null) openWallpaperSetter(context, uri)
                         }

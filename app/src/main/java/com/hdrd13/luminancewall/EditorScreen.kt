@@ -250,7 +250,7 @@ fun EditorScreen(initialColors: List<Color>, cornerRadius: androidx.compose.ui.u
                 backdrop = rootBackdrop,
                 refractionColors = renderColors,
                 onSaveOnly = {
-                    onSavePreset(selectedColors)
+                    onSavePreset(renderColors)
                     Toast.makeText(context, "Saved to Presets", Toast.LENGTH_SHORT).show()
                     showActionDialog = false
                     onBack()
@@ -258,11 +258,11 @@ fun EditorScreen(initialColors: List<Color>, cornerRadius: androidx.compose.ui.u
                 onSaveAndDownload = {
                     isProcessing = true
                     coroutineScope.launch(Dispatchers.IO) {
-                        val uri = exportToPublicGallery(context, renderColors)
+                        val uri = exportToPublicGallery(context, renderColors, animatedTime)
                         withContext(Dispatchers.Main) {
                             isProcessing = false
                             if (uri != null) {
-                                onSavePreset(selectedColors)
+                                onSavePreset(renderColors)
                                 Toast.makeText(context, "Saved to Presets & Gallery", Toast.LENGTH_SHORT).show()
                                 showActionDialog = false
                                 onBack()
@@ -273,11 +273,11 @@ fun EditorScreen(initialColors: List<Color>, cornerRadius: androidx.compose.ui.u
                 onSaveAndSet = {
                     isProcessing = true
                     coroutineScope.launch(Dispatchers.IO) {
-                        val uri = exportToCacheAndGetUri(context, renderColors)
+                        val uri = exportToCacheAndGetUri(context, renderColors, animatedTime)
                         withContext(Dispatchers.Main) {
                             isProcessing = false
                             if (uri != null) {
-                                onSavePreset(selectedColors)
+                                onSavePreset(renderColors)
                                 showActionDialog = false
                                 openWallpaperSetter(context, uri)
                             }

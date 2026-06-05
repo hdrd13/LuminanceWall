@@ -15,14 +15,14 @@ import androidx.compose.ui.graphics.Color
 import java.io.File
 import java.io.FileOutputStream
 
-fun generateWallpaperBitmap(context: Context, colors: List<Color>): Bitmap {
+fun generateWallpaperBitmap(context: Context, colors: List<Color>, time: Float = 0f): Bitmap {
     val windowManager = context.getSystemService(WindowManager::class.java)
     val bounds = windowManager.currentWindowMetrics.bounds
     val width = bounds.width()
     val height = bounds.height()
 
     val agslShader = RuntimeShader(AGSL_SHADER)
-    setShaderUniforms(agslShader, colors, colors.size.toFloat(), width.toFloat(), height.toFloat())
+    setShaderUniforms(agslShader, colors, colors.size.toFloat(), width.toFloat(), height.toFloat(), time)
 
     val picture = Picture()
     val pCanvas = picture.beginRecording(width, height)
@@ -32,9 +32,9 @@ fun generateWallpaperBitmap(context: Context, colors: List<Color>): Bitmap {
     return Bitmap.createBitmap(picture).copy(Bitmap.Config.ARGB_8888, false)
 }
 
-fun exportToPublicGallery(context: Context, colors: List<Color>): Uri? {
+fun exportToPublicGallery(context: Context, colors: List<Color>, time: Float = 0f): Uri? {
     return try {
-        val bitmap = generateWallpaperBitmap(context, colors)
+        val bitmap = generateWallpaperBitmap(context, colors, time)
         val cv = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "Luminance_${System.currentTimeMillis()}.png")
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
@@ -50,9 +50,9 @@ fun exportToPublicGallery(context: Context, colors: List<Color>): Uri? {
     } catch (_: Exception) { null }
 }
 
-fun exportToCacheAndGetUri(context: Context, colors: List<Color>): Uri? {
+fun exportToCacheAndGetUri(context: Context, colors: List<Color>, time: Float = 0f): Uri? {
     return try {
-        val bitmap = generateWallpaperBitmap(context, colors)
+        val bitmap = generateWallpaperBitmap(context, colors, time)
         val cachePath = File(context.cacheDir, "images")
         cachePath.mkdirs()
         val file = File(cachePath, "temp_wall.png")
