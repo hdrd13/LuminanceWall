@@ -18,9 +18,32 @@ import java.io.FileOutputStream
 fun generateWallpaperBitmap(context: Context, colors: List<Color>, time: Float = 0f): Bitmap {
     val windowManager = context.getSystemService(WindowManager::class.java)
     val bounds = windowManager.currentWindowMetrics.bounds
-    val width = bounds.width()
-    val height = bounds.height()
+    return rasterizeShaderBitmap(colors, bounds.width(), bounds.height(), time)
+}
 
+object ShaderBitmapCache {
+    private val map = LinkedHashMap<String, Bitmap>()
+    private const val MAX_ENTRIES = 16
+
+    @Synchronized
+    fun get(key: String): Bitmap? = map[key]
+
+    fun getOrPut(key: String, render: () -> Bitmap): Bitmap {
+        get(key)?.let { return it }
+        val bitmap = render()
+        synchronized(this) {
+            map[key]?.let { return it }
+            map[key] = bitmap
+            while (map.size > MAX_ENTRIES) {
+                val oldestKey = map.keys.firstOrNull() ?: break
+                map.remove(oldestKey)
+            }
+            return bitmap
+        }
+    }
+}
+
+fun rasterizeShaderBitmap(colors: List<Color>, width: Int, height: Int, time: Float = 0f): Bitmap {
     val agslShader = RuntimeShader(AGSL_SHADER)
     setShaderUniforms(agslShader, colors, colors.size.toFloat(), width.toFloat(), height.toFloat(), time)
 

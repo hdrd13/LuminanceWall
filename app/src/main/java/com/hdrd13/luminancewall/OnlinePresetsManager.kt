@@ -69,7 +69,8 @@ object OnlinePresetsManager {
                     val color = Color(android.graphics.Color.parseColor(hex))
                     colors.add(color)
                 }
-                list.add(Preset(name, colors))
+                val category = obj.optString("category", "Community").ifBlank { "Community" }
+                list.add(Preset(name, colors, category))
             }
         } catch (e: Exception) {
             e.printStackTrace()

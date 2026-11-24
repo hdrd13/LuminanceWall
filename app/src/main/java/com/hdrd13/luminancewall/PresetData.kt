@@ -3,9 +3,13 @@ package com.hdrd13.luminancewall
 import android.content.SharedPreferences
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.unit.Dp
 import androidx.core.content.edit
 
-data class Preset(val name: String, val colors: List<Color>)
+data class Preset(val name: String, val colors: List<Color>, val category: String = "Community")
+
+data class EditorSource(val bounds: Rect, val cornerRadius: Dp)
 
 val APPLE_COLORS_75 = listOf(
     0xFF4A0000, 0xFF7D0000, 0xFFC90000, 0xFFFF3B30, 0xFFFF2424,

@@ -1,18 +1,27 @@
+import java.io.File
 import java.io.FileInputStream
 import java.util.Properties
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Optional
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
 
-android {
-    val localProperties = Properties()
-    val localPropertiesFile = project.rootProject.file("local.properties")
-    if (localPropertiesFile.exists()) {
-        localProperties.load(FileInputStream(localPropertiesFile))
-    }
+val localProperties = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) FileInputStream(f).use { load(it) }
+}
 
+android {
     signingConfigs {
         create("release") {
             storeFile = file(localProperties.getProperty("storeFile", ""))
@@ -24,7 +33,9 @@ android {
 
     namespace = "com.hdrd13.luminancewall"
     compileSdk {
-        version = release(37)
+        version = release(37) {
+            minorApiLevel = 2
+        }
     }
 
     defaultConfig {
@@ -66,11 +77,54 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.kyant.liquid.glass)
-    implementation(libs.kyant.shapes)
+    implementation(libs.glasmio.scaffold)
 }
 
 base {
-    archivesName.set("LuminanceWall-v1.1")
+    archivesName.set("LuminanceWall-v1.2-beta")
+}
+
+abstract class GenerateSymbolFont : DefaultTask() {
+    @get:InputFile
+    @get:Optional
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val sourceFont: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val output = outputDirectory.get().asFile
+        output.deleteRecursively()
+        output.mkdirs()
+        sourceFont.orNull?.asFile?.let { font ->
+            val sig = font.inputStream().use { it.readNBytes(4).toList() }
+            require(
+                sig == listOf<Byte>(0, 1, 0, 0) ||
+                    sig == "OTTO".toByteArray().toList() ||
+                    sig == "true".toByteArray().toList()
+            ) { "${font.name} is not an OpenType or TrueType font." }
+            font.copyTo(output.resolve("glasmio_symbols.ttf"), overwrite = true)
+        }
+    }
+}
+
+val symbolFontPath: String? = (providers.gradleProperty("glasmio.symbolFont").orNull
+    ?: localProperties.getProperty("glasmio.symbolFont"))
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+
+val generateSymbolFont = tasks.register<GenerateSymbolFont>("generateSymbolFont") {
+    symbolFontPath?.let { sourceFont.set(layout.file(provider { File(it) })) }
+    outputDirectory.set(layout.buildDirectory.dir("generated/symbol-font/debug/assets"))
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            generateSymbolFont,
+            GenerateSymbolFont::outputDirectory,
+        )
+    }
 }

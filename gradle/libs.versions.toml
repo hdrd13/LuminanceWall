@@ -1,14 +1,11 @@
 [versions]
-agp = "9.1.1"
-coreKtx = "1.18.0"
-lifecycleRuntimeKtx = "2.10.0"
+agp = "9.5.2"
+coreKtx = "1.19.1"
+lifecycleRuntimeKtx = "2.11.1"
 activityCompose = "1.13.0"
-kotlin = "2.3.21"
-composeBom = "2026.05.00"
-navigationCompose = "2.9.8"
-material3 = "1.5.0-alpha19"
-liquidGlass = "2.0.0-alpha03"
-kyantShapes = "1.2.0"
+kotlin = "2.4.21"
+composeBom = "2026.11.01"
+glasmio = "0.1.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -20,10 +17,8 @@ androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graph
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
-androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
-androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
-kyant-liquid-glass = { group = "io.github.kyant0", name = "backdrop", version.ref = "liquidGlass"}
-kyant-shapes = { group = "io.github.kyant0", name = "shapes", version.ref = "kyantShapes" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+glasmio-scaffold = { group = "io.github.neoruaa.glasmio", name = "glasmio-scaffold", version.ref = "glasmio" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

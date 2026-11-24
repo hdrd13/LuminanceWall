@@ -1,14 +1,13 @@
 package com.hdrd13.luminancewall
 
+import android.graphics.Bitmap
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -16,20 +15,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,53 +40,62 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
-import com.kyant.backdrop.backdrops.LayerBackdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.colorControls
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.shapes.Capsule
-import com.kyant.shapes.RoundedRectangle
+import io.github.neoruaa.glasmio.core.GlasmioTheme
+import io.github.neoruaa.glasmio.core.IosTextStyle
+import io.github.neoruaa.glasmio.core.IosTextVariant
+import io.github.neoruaa.glasmio.glass.GlasmioBackdropHost
+import io.github.neoruaa.glasmio.glass.GlassSurface
+import io.github.neoruaa.glasmio.glass.NavigationGlassMaterial
+import io.github.neoruaa.glasmio.icons.SfIcon
+import io.github.neoruaa.glasmio.ui.GlasmioButton
+import io.github.neoruaa.glasmio.ui.GlasmioButtonSize
+import io.github.neoruaa.glasmio.ui.GlasmioIconButton
+import io.github.neoruaa.glasmio.ui.GlasmioMenu
+import io.github.neoruaa.glasmio.ui.GlasmioMenuItem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EditorScreen(
     initialColors: List<Color>,
     isEditable: Boolean,
     cornerRadius: androidx.compose.ui.unit.Dp = 0.dp,
+    source: EditorSource? = null,
+    sourceScale: Float = 0.701f,
+    sourceCorner: androidx.compose.ui.unit.Dp = 41.7.dp,
     onBack: () -> Unit,
     onSavePreset: (List<Color>) -> Unit
 ) {
@@ -103,8 +106,10 @@ fun EditorScreen(
 
     var selectedColors by remember { mutableStateOf(initialColors) }
     var isProcessing by remember { mutableStateOf(false) }
-    var showActionDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
     var isPickerVisible by remember { mutableStateOf(false) }
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    var viewportBounds by remember { mutableStateOf<Rect?>(null) }
 
     val runtimeShader = remember { android.graphics.RuntimeShader(AGSL_SHADER) }
 
@@ -118,6 +123,13 @@ fun EditorScreen(
     }
 
     val renderColors = if (selectedColors.size == 1 && singleColorShades.isNotEmpty()) singleColorShades else selectedColors
+    val initialRenderColors = remember(initialColors) {
+        if (initialColors.size == 1) {
+            val b = initialColors[0]
+            listOf(b.multiply(0.2f), b.multiply(0.5f), b, b.multiply(0.8f))
+        } else initialColors
+    }
+    val isModified = renderColors != initialRenderColors
 
     val animatedColorCount by animateFloatAsState(
         targetValue = renderColors.size.toFloat(),
@@ -131,509 +143,431 @@ fun EditorScreen(
     }
 
     var time by remember { mutableFloatStateOf(0f) }
+    var isInitialTimeEffect by remember { mutableStateOf(true) }
     val animatedTime by animateFloatAsState(targetValue = time, animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing), label = "timeAnim")
 
-    LaunchedEffect(selectedColors, singleColorShades) { time += 1.0f }
+    LaunchedEffect(selectedColors, singleColorShades) {
+        if (isInitialTimeEffect) {
+            isInitialTimeEffect = false
+        } else {
+            time += 1.0f
+        }
+    }
 
-    val rootBackdrop = rememberLayerBackdrop { drawContent() }
+    val zoomProgress = remember { Animatable(0f) }
+    var zoomingOut by remember { mutableStateOf(false) }
+    LaunchedEffect(viewportSize, source, zoomingOut) {
+        if (viewportSize != IntSize.Zero) {
+            if (zoomingOut) {
+                zoomProgress.animateTo(0f, spring(dampingRatio = 1f, stiffness = 180f))
+                onBack()
+            } else {
+                zoomProgress.animateTo(1f, spring(dampingRatio = 1f, stiffness = 180f))
+            }
+        }
+    }
+    fun requestBack() {
+        if (!zoomingOut) {
+            menuExpanded = false
+            isPickerVisible = false
+            zoomingOut = true
+        }
+    }
+    BackHandler(enabled = !zoomingOut) { requestBack() }
+    val zp = zoomProgress.value
+    val sourceScaleX = source?.takeIf { viewportSize.width > 0 }
+        ?.let { (it.bounds.width / viewportSize.width).coerceIn(0.05f, 1f) }
+        ?: sourceScale
+    val sourceScaleY = source?.takeIf { viewportSize.height > 0 }
+        ?.let { (it.bounds.height / viewportSize.height).coerceIn(0.05f, 1f) }
+        ?: sourceScale
+    val editorScaleX = lerp(sourceScaleX, 1f, zp)
+    val editorScaleY = lerp(sourceScaleY, 1f, zp)
+    val viewportOrigin = viewportBounds?.topLeft
+    val sourceCenterX = source?.bounds?.center?.x?.let { it - (viewportOrigin?.x ?: 0f) }
+        ?: (viewportSize.width / 2f)
+    val sourceCenterY = source?.bounds?.center?.y?.let { it - (viewportOrigin?.y ?: 0f) }
+        ?: (viewportSize.height / 2f)
+    val translationX = (sourceCenterX - viewportSize.width / 2f) * (1f - zp)
+    val translationY = (sourceCenterY - viewportSize.height / 2f) * (1f - zp)
+    val actualSourceCorner = source?.cornerRadius ?: sourceCorner
+    val sourceClipRadius = actualSourceCorner / sourceScaleY.coerceAtLeast(0.01f)
+    val editorClipRadius = sourceClipRadius + (cornerRadius - sourceClipRadius) * zp
+    val chromeAlpha = ((zp - 0.6f) / 0.4f).coerceIn(0f, 1f)
+
+    val editorCacheKey = renderColors.hashCode().toString() + "x" + viewportSize.width + "x" + viewportSize.height + "t" + time
+    val editorBitmap by produceState<Bitmap?>(
+        ShaderBitmapCache.get(editorCacheKey),
+        renderColors, viewportSize, time
+    ) {
+        if (viewportSize.width <= 0 || viewportSize.height <= 0) return@produceState
+        value = withContext(Dispatchers.Default) {
+            ShaderBitmapCache.getOrPut(editorCacheKey) {
+                rasterizeShaderBitmap(renderColors, viewportSize.width, viewportSize.height, time)
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clip(RoundedRectangle(cornerRadius))
-            .background(Color.Black)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                isPickerVisible = false
+            .onSizeChanged { viewportSize = it }
+            .onGloballyPositioned {
+                viewportBounds = it.boundsInRoot()
+                viewportSize = it.size
             }
-    ){
-        Canvas(modifier = Modifier.fillMaxSize().layerBackdrop(rootBackdrop)) {
-            setShaderUniforms(runtimeShader, animatedColors, animatedColorCount, size.width, size.height, animatedTime)
-            drawRect(brush = ShaderBrush(runtimeShader), size = size)
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            MiniGlassButton(
-                backdrop = rootBackdrop,
-                label = "Cancel",
-                modifier = Modifier.width(66.dp),
-                onClick = onBack
-            )
-            MiniGlassButton(
-                backdrop = rootBackdrop,
-                label = "Done",
-                modifier = Modifier.width(66.dp),
-                onClick = { showActionDialog = true }
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(bottom = 32.dp),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            AnimatedVisibility(
-                visible = !isPickerVisible && !showActionDialog,
-                enter = slideInVertically(spring(dampingRatio = 0.8f)) { it } + fadeIn(),
-                exit = slideOutVertically(tween(200)) { it } + fadeOut()
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                    CircularGlassIconButton(
-                        backdrop = rootBackdrop,
-                        icon = {
-                            Icon(
-                                imageVector = ImageVector.vectorResource(id = R.drawable.ic_refresh),
-                                contentDescription = "Shuffle",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        },
-                        onClick = {
-                            if (selectedColors.size > 1) selectedColors = selectedColors.shuffled()
-                            else singleColorShades = singleColorShades.shuffled()
-                        }
-                    )
-
-                    if (isEditable) {
-                        CircularGlassIconButton(
-                            backdrop = rootBackdrop,
-                            icon = {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_edit),
-                                    contentDescription = "Colors",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            },
-                            onClick = { isPickerVisible = true }
-                        )
-                    }
-                }
-            }
-
-            AnimatedVisibility(
-                visible = isPickerVisible && !showActionDialog,
-                enter = slideInVertically(spring(dampingRatio = 0.85f)) { it } + fadeIn(),
-                exit = slideOutVertically(tween(250)) { it } + fadeOut()
-            ) {
-                EditorColorPicker(
-                    backdrop = rootBackdrop,
-                    selectedColors = selectedColors,
-                    onColorsChanged = { selectedColors = it },
-                    singleColorShades = singleColorShades,
-                    onShadesChanged = { singleColorShades = it },
-                    context = context
-                )
-            }
-        }
-
-        if (isProcessing) {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}, contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color.White)
-            }
-        }
-
-        AnimatedVisibility(visible = showActionDialog, enter = fadeIn(tween(300)), exit = fadeOut(tween(300))) {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { showActionDialog = false })
-        }
-
-        AnimatedVisibility(
-            visible = showActionDialog,
-            enter = fadeIn(tween(350, easing = LinearOutSlowInEasing)) + scaleIn(spring(dampingRatio = 0.82f, stiffness = 280f), initialScale = 0.85f),
-            exit = fadeOut(tween(250, easing = FastOutLinearInEasing)) + scaleOut(tween(250, easing = FastOutLinearInEasing), targetScale = 0.9f),
-            modifier = Modifier.align(Alignment.Center)
-        ) {
-            EditorActionDialog(
-                backdrop = rootBackdrop,
-                refractionColors = renderColors,
-                onSaveOnly = {
-                    onSavePreset(renderColors)
-                    Toast.makeText(context, "Saved to Presets", Toast.LENGTH_SHORT).show()
-                    showActionDialog = false
-                    onBack()
-                },
-                onSaveAndDownload = {
-                    isProcessing = true
-                    coroutineScope.launch(Dispatchers.IO) {
-                        val uri = exportToPublicGallery(context, renderColors, animatedTime)
-                        withContext(Dispatchers.Main) {
-                            isProcessing = false
-                            if (uri != null) {
-                                Toast.makeText(context, "Saved to Gallery", Toast.LENGTH_SHORT).show()
-                                showActionDialog = false
-                                onBack()
-                            }
-                        }
-                    }
-                },
-                onSaveAndSet = {
-                    isProcessing = true
-                    coroutineScope.launch(Dispatchers.IO) {
-                        val uri = exportToCacheAndGetUri(context, renderColors, animatedTime)
-                        withContext(Dispatchers.Main) {
-                            isProcessing = false
-                            if (uri != null) {
-                                showActionDialog = false
-                                openWallpaperSetter(context, uri)
-                            }
-                        }
-                    }
-                },
-                onCancel = { showActionDialog = false }
-            )
-        }
-    }
-}
-
-@Composable
-fun MiniGlassButton(
-    backdrop: LayerBackdrop,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    surfaceColor: Color = Color.Transparent
-) {
-    val animationScope = rememberCoroutineScope()
-    val progressAnimation = remember { Animatable(0f) }
-    val animSpec = spring<Float>(0.5f, 300f, 0.001f)
-
-    Box(
-        modifier = modifier
-            .height(28.dp)
-            .drawBackdrop(
-                backdrop = backdrop,
-                shape = { Capsule() },
-                effects = {
-                    vibrancy()
-                    blur(24f.dp.toPx())
-                    lens(12f.dp.toPx(), 24f.dp.toPx(), true)
-                },
-                layerBlock = {
-                    val progress = progressAnimation.value
-                    val maxScale = (size.width + 8f.dp.toPx()) / size.width
-                    val scale = lerp(1f, maxScale, progress)
-                    scaleX = scale
-                    scaleY = scale
-                },
-                onDrawSurface = {
-                    drawRect(surfaceColor)
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(Color.White.copy(alpha = 0.4f), Color.Transparent),
-                            endY = size.height * 0.5f
-                        ),
-                        size = size,
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
-                    )
-                }
-            )
-            .clickable(interactionSource = null, indication = null) { onClick() }
-            .pointerInput(animationScope) {
-                awaitEachGesture {
-                    awaitFirstDown()
-                    animationScope.launch { progressAnimation.animateTo(1f, animSpec) }
-                    waitForUpOrCancellation()
-                    animationScope.launch { progressAnimation.animateTo(0f, animSpec) }
-                }
-            }
-            .padding(horizontal = 10.dp),
-        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            color = Color.White,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 12.sp
-        )
-    }
-}
-
-@Composable
-fun CircularGlassIconButton(
-    backdrop: LayerBackdrop,
-    icon: @Composable () -> Unit,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    surfaceColor: Color = Color.Transparent,
-    refractionColors: List<Color> = emptyList(),
-    showRimLight: Boolean = true
-) {
-    val animationScope = rememberCoroutineScope()
-    val progressAnimation = remember { Animatable(0f) }
-    val animSpec = spring<Float>(0.5f, 300f, 0.001f)
-
-    Box(
-        modifier = modifier
-            .size(52.dp)
-            .drawBackdrop(
-                backdrop = backdrop,
-                shape = { CircleShape },
-                effects = {
-                    vibrancy()
-                    blur(24f.dp.toPx())
-                    lens(24f.dp.toPx(), 48f.dp.toPx(), true)
-                },
-                layerBlock = {
-                    val progress = progressAnimation.value
-                    val maxScale = (size.width + 8f.dp.toPx()) / size.width
-                    val scale = lerp(1f, maxScale, progress)
-                    scaleX = scale
-                    scaleY = scale
-                },
-                onDrawSurface = {
-                    drawRect(surfaceColor)
-
-                    val cornerRadius = 26.dp.toPx()
-
-                    if (refractionColors.isNotEmpty()) {
-                        val rect = androidx.compose.ui.geometry.Rect(androidx.compose.ui.geometry.Offset.Zero, size)
-                        val layerPaint = androidx.compose.ui.graphics.Paint()
-
-                        drawContext.canvas.saveLayer(rect, layerPaint)
-
-                        drawRoundRect(
-                            brush = Brush.horizontalGradient(refractionColors),
-                            size = size,
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius),
-                            alpha = 0.5f
-                        )
-
-                        drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.Black, Color.White.copy(alpha = 0.2f), Color.Transparent),
-                                endY = size.height * 0.2f
-                            ),
-                            size = size,
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius),
-                            blendMode = BlendMode.DstIn
-                        )
-
-                        drawContext.canvas.restore()
-                    }
-
-                    if (showRimLight) {
-                        drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.White.copy(alpha = 0.4f), Color.Transparent),
-                                endY = size.height * 0.4f
-                            ),
-                            size = size,
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
-                        )
-                    }
-                }
+        if (viewportSize.width > 0 && viewportSize.height > 0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.25f * zp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {}
             )
-            .clickable(interactionSource = null, indication = null) { onClick() }
-            .pointerInput(animationScope) {
-                awaitEachGesture {
-                    awaitFirstDown()
-                    animationScope.launch { progressAnimation.animateTo(1f, animSpec) }
-                    waitForUpOrCancellation()
-                    animationScope.launch { progressAnimation.animateTo(0f, animSpec) }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = editorScaleX
+                        scaleY = editorScaleY
+                        this.translationX = translationX
+                        this.translationY = translationY
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    }
+                    .clip(RoundedCornerShape(editorClipRadius))
+                    .background(Color.Black)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        isPickerVisible = false
+                    }
+            ) {
+        GlasmioBackdropHost(
+            modifier = Modifier.fillMaxSize(),
+            sampledContent = { _ ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    editorBitmap?.let { bmp ->
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = ContentScale.FillBounds,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    }
                 }
             },
-        contentAlignment = Alignment.Center
-    ) {
-        icon()
+            overlayContent = { _ ->
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    setShaderUniforms(runtimeShader, animatedColors, animatedColorCount, size.width, size.height, animatedTime)
+                    drawRect(brush = ShaderBrush(runtimeShader), size = size)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                        .graphicsLayer { alpha = if (zoomingOut) 0f else chromeAlpha },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    GlasmioButton(
+                        onClick = ::requestBack,
+                        modifier = Modifier.width(72.dp),
+                        size = GlasmioButtonSize.Small,
+                        navigationSurfaceAlphaMultiplier = 1f,
+                    ) {
+                        Text("Cancel", maxLines = 1)
+                    }
+                    GlasmioMenu(
+                        expanded = menuExpanded,
+                        onExpandedChange = { menuExpanded = it },
+                        itemCount = 3,
+                        anchor = { open ->
+                            GlasmioButton(
+                                onClick = open,
+                                modifier = Modifier.width(72.dp),
+                                size = GlasmioButtonSize.Small,
+                                navigationSurfaceAlphaMultiplier = 1f,
+                            ) {
+                                Text("Done", maxLines = 1)
+                            }
+                        },
+                    ) { backdrop, close ->
+                        GlasmioMenuItem("Set as Wallpaper", {
+                            menuExpanded = false
+                            if (isModified) {
+                                onSavePreset(renderColors)
+                            }
+                            isProcessing = true
+                            coroutineScope.launch(Dispatchers.IO) {
+                                val uri = exportToCacheAndGetUri(context, renderColors, animatedTime)
+                                withContext(Dispatchers.Main) {
+                                    isProcessing = false
+                                    if (uri != null) {
+                                        openWallpaperSetter(context, uri)
+                                    }
+                                }
+                            }
+                        }, systemName = "photo.on.rectangle.angled", backdrop = backdrop)
+
+                        GlasmioMenuItem("Save to Gallery", {
+                            menuExpanded = false
+                            if (isModified) {
+                                onSavePreset(renderColors)
+                            }
+                            isProcessing = true
+                            coroutineScope.launch(Dispatchers.IO) {
+                                val uri = exportToPublicGallery(context, renderColors, animatedTime)
+                                withContext(Dispatchers.Main) {
+                                    isProcessing = false
+                                    if (uri != null) {
+                                        Toast.makeText(context, "Saved to Gallery", Toast.LENGTH_SHORT).show()
+                                        delay(220.milliseconds)
+                                        requestBack()
+                                    }
+                                }
+                            }
+                        }, systemName = "square.and.arrow.down", backdrop = backdrop)
+
+                        GlasmioMenuItem("Save Preset Only", {
+                            menuExpanded = false
+                            onSavePreset(renderColors)
+                            Toast.makeText(context, "Saved to Presets", Toast.LENGTH_SHORT).show()
+                            coroutineScope.launch {
+                                delay(220.milliseconds)
+                                requestBack()
+                            }
+                        }, systemName = "bookmark", backdrop = backdrop)
+                    }
+                }
+
+                var paletteButtonBounds by remember { mutableStateOf<Rect?>(null) }
+                var pickerBounds by remember { mutableStateOf<Rect?>(null) }
+
+                val pickerTransformOrigin = remember(paletteButtonBounds, pickerBounds) {
+                    val btn = paletteButtonBounds
+                    val pkr = pickerBounds
+                    if (btn != null && pkr != null && pkr.width > 0f && pkr.height > 0f) {
+                        TransformOrigin(
+                            pivotFractionX = ((btn.center.x - pkr.left) / pkr.width).coerceIn(0f, 1f),
+                            pivotFractionY = ((btn.center.y - pkr.top) / pkr.height).coerceIn(0f, 1f),
+                        )
+                    } else {
+                        TransformOrigin(0.62f, 0.92f)
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(bottom = 32.dp)
+                        .graphicsLayer { alpha = if (zoomingOut) 0f else chromeAlpha },
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    AnimatedVisibility(
+                        visible = !isPickerVisible && !zoomingOut,
+                        enter = fadeIn(tween(180)) + scaleIn(
+                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                            initialScale = 0.85f
+                        ),
+                        exit = fadeOut(tween(120)) + scaleOut(
+                            animationSpec = tween(120),
+                            targetScale = 0.85f
+                        )
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                            GlasmioIconButton(
+                                onClick = {
+                                    if (selectedColors.size > 1) selectedColors = selectedColors.shuffled()
+                                    else singleColorShades = singleColorShades.shuffled()
+                                },
+                                modifier = Modifier.size(49.dp),
+                                navigationSurfaceAlphaMultiplier = 1f,
+                            ) {
+                                SfIcon("arrow.counterclockwise", "Shuffle", modifier = Modifier.size(20.dp))
+                            }
+
+                            if (isEditable) {
+                                GlasmioIconButton(
+                                    onClick = { isPickerVisible = true },
+                                    modifier = Modifier
+                                        .size(49.dp)
+                                        .onGloballyPositioned { paletteButtonBounds = it.boundsInRoot() },
+                                    navigationSurfaceAlphaMultiplier = 1f,
+                                ) {
+                                    SfIcon("paintpalette", "Colors", modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isPickerVisible && !zoomingOut,
+                        enter = fadeIn(tween(180)) + scaleIn(
+                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                            initialScale = 0.16f,
+                            transformOrigin = pickerTransformOrigin
+                        ),
+                        exit = fadeOut(tween(150)) + scaleOut(
+                            animationSpec = spring(dampingRatio = 0.9f, stiffness = 420f),
+                            targetScale = 0.16f,
+                            transformOrigin = pickerTransformOrigin
+                        )
+                    ) {
+                        Box(modifier = Modifier.onGloballyPositioned { pickerBounds = it.boundsInRoot() }) {
+                            EditorColorPicker(
+                                selectedColors = selectedColors,
+                                onColorsChanged = { selectedColors = it },
+                                singleColorShades = singleColorShades,
+                                onShadesChanged = { singleColorShades = it },
+                                context = context
+                            )
+                        }
+                    }
+                }
+
+                if (isProcessing) {
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {},
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = Color.White)
+                    }
+                }
+            }
+        )
+            }
+        }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EditorColorPicker(
-    backdrop: LayerBackdrop,
     selectedColors: List<Color>,
     onColorsChanged: (List<Color>) -> Unit,
     singleColorShades: List<Color>,
     onShadesChanged: (List<Color>) -> Unit,
     context: android.content.Context
 ) {
-    val isLightTheme = !isSystemInDarkTheme()
-    val contentColor = if (isLightTheme) Color.Black else Color.White
-    val containerColor = if (isLightTheme) Color(0xFFF2F2F7).copy(alpha = 0.75f) else Color(0xFF1E1E1E).copy(alpha = 0.45f)
+    val contentColor = Color.White
 
-    val pickerBackdrop = rememberLayerBackdrop { drawContent() }
-
-    Column(
+    GlassSurface(
         modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .drawBackdrop(
-                backdrop = backdrop,
-                exportedBackdrop = pickerBackdrop,
-                shape = { RoundedRectangle(40f.dp) },
-                effects = {
-                    colorControls(
-                        brightness = if (isLightTheme) 0.15f else 0.02f,
-                        saturation = if (isLightTheme) 1.4f else 1.3f
-                    )
-                    blur(if (isLightTheme) 28f.dp.toPx() else 36f.dp.toPx())
-                },
-                highlight = { Highlight.Plain },
-                onDrawSurface = {
-                    drawRect(containerColor)
-                    // Draw premium iOS glass border highlight
-                    val outlineColor = if (isLightTheme) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
-                    drawRoundRect(
-                        color = outlineColor,
-                        size = size,
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(40f.dp.toPx()),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5.dp.toPx())
-                    )
-                }
-            )
+            .padding(horizontal = 12.dp)
             .fillMaxWidth()
-            .padding(vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            ),
+        shape = RoundedCornerShape(38.dp),
+        material = NavigationGlassMaterial.RegularMedium,
+        sampleBackdrop = true,
+        navigationSurfaceAlphaMultiplier = 1f,
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = if (selectedColors.size == 1) "1 Color Selected" else "${selectedColors.size} Colors Selected",
-            color = contentColor.copy(alpha = 0.8f),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = if (selectedColors.size == 1) "1 Color Selected" else "${selectedColors.size} Colors Selected",
+                color = contentColor,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 18.dp),
+                style = GlasmioTheme.textStyles[IosTextStyle.Subheadline, IosTextVariant.Emphasized]
+            )
 
-        val pagerState = rememberPagerState(pageCount = { 3 })
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
-            val pageColors = APPLE_COLORS_75.chunked(25)[page]
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                for (row in pageColors.chunked(5)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        for (color in row) {
-                            val isSelected = selectedColors.contains(color)
-                            val circleSize by animateDpAsState(targetValue = if (isSelected) 24.dp else 34.dp, animationSpec = spring(), label = "sizeAnim")
-                            val ringAlpha by animateFloatAsState(targetValue = if (isSelected) 1f else 0f, label = "ringAlpha")
+            val pagerState = rememberPagerState(pageCount = { 3 })
+            HorizontalPager(
+                state = pagerState,
+                pageSpacing = 24.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) { page ->
+                val pageColors = APPLE_COLORS_75.chunked(25)[page]
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                ) {
+                    val gridGap = (maxWidth * 0.055f).coerceIn(12.dp, 18.dp)
+                    val circleSize = (maxWidth - gridGap * 4) / 5f
 
-                            Box(
-                                modifier = Modifier.size(34.dp).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                    if (isSelected) {
-                                        if (selectedColors.size > 1) onColorsChanged(selectedColors - color)
-                                        else Toast.makeText(context, "Minimum 1 color", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        if (selectedColors.size < MAX_COLORS) onColorsChanged(selectedColors + color)
-                                        else Toast.makeText(context, "Maximum $MAX_COLORS colors", Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(gridGap)
+                    ) {
+                        for (row in pageColors.chunked(5)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(gridGap)
                             ) {
-                                Box(modifier = Modifier.fillMaxSize().alpha(ringAlpha).border(2.dp, contentColor, CircleShape))
-                                Box(modifier = Modifier.size(circleSize).clip(CircleShape).background(color))
+                                for (color in row) {
+                                    val isSelected = selectedColors.contains(color)
+                                    val ringAlpha by animateFloatAsState(
+                                        targetValue = if (isSelected) 1f else 0f,
+                                        animationSpec = tween(180),
+                                        label = "ringAlpha"
+                                    )
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(circleSize)
+                                            .clip(CircleShape)
+                                            .background(color)
+                                            .border(2.5.dp, contentColor.copy(alpha = ringAlpha), CircleShape)
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null
+                                            ) {
+                                                if (isSelected) {
+                                                    if (selectedColors.size > 1) onColorsChanged(selectedColors - color)
+                                                    else Toast.makeText(context, "Minimum 1 color", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    if (selectedColors.size < MAX_COLORS) onColorsChanged(selectedColors + color)
+                                                    else Toast.makeText(context, "Maximum $MAX_COLORS colors", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            repeat(3) { index ->
-                val isCurrent = pagerState.currentPage == index
-                val dotWidth by animateDpAsState(if (isCurrent) 16.dp else 6.dp, label = "dotWidth")
-                val dotColor by animateColorAsState(targetValue = if (isCurrent) contentColor else contentColor.copy(alpha = 0.2f), label = "dotColor")
-                Box(modifier = Modifier.height(6.dp).width(dotWidth).clip(RoundedCornerShape(3.dp)).background(dotColor))
+            Spacer(modifier = Modifier.height(18.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(3) { index ->
+                    val dotAlpha by animateFloatAsState(
+                        targetValue = if (pagerState.currentPage == index) 1f else 0.42f,
+                        label = "dotAlpha"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(contentColor.copy(alpha = dotAlpha))
+                    )
+                }
             }
         }
-    }
-}
-
-@Composable
-fun EditorActionDialog(
-    backdrop: LayerBackdrop,
-    refractionColors: List<Color>,
-    onSaveOnly: () -> Unit,
-    onSaveAndDownload: () -> Unit,
-    onSaveAndSet: () -> Unit,
-    onCancel: () -> Unit
-) {
-    val dialogBackdrop = rememberLayerBackdrop { drawContent() }
-    val isLightTheme = !isSystemInDarkTheme()
-    val contentColor = if (isLightTheme) Color.Black else Color.White
-    val accentColor = if (isLightTheme) Color(0xFF0088FF) else Color(0xFF0091FF)
-    val containerColor = if (isLightTheme) Color(0xFFF2F2F7).copy(alpha = 0.75f) else Color(0xFF1E1E1E).copy(alpha = 0.45f)
-    val buttonBgColor = if (isLightTheme) Color.Black.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.08f)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 32.dp)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-    ) {
-        Column(
-            modifier = Modifier
-                .drawBackdrop(
-                    backdrop = backdrop,
-                    exportedBackdrop = dialogBackdrop,
-                    shape = { RoundedRectangle(48f.dp) },
-                    effects = {
-                        colorControls(
-                            brightness = if (isLightTheme) 0.15f else 0.02f,
-                            saturation = if (isLightTheme) 1.4f else 1.3f
-                        )
-                        blur(if (isLightTheme) 28f.dp.toPx() else 36f.dp.toPx())
-                    },
-                    highlight = { Highlight.Plain },
-                    onDrawSurface = {
-                        drawRect(containerColor)
-                        if (refractionColors.isNotEmpty()) {
-                            drawRect(
-                                brush = Brush.horizontalGradient(refractionColors),
-                                alpha = 0.1f,
-                                blendMode = BlendMode.Screen
-                            )
-                        }
-                        // Draw premium iOS glass border highlight
-                        val outlineColor = if (isLightTheme) Color.White.copy(alpha = 0.45f) else Color.White.copy(alpha = 0.12f)
-                        drawRoundRect(
-                            color = outlineColor,
-                            size = size,
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(48f.dp.toPx()),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.5.dp.toPx())
-                        )
-                    }
-                )
-                .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Text("Save Preset?", color = contentColor, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(8.dp))
-            Text("Choose how you want to save this wallpaper.", color = contentColor.copy(alpha = 0.68f), fontSize = 14.sp, lineHeight = 18.sp)
-            Spacer(Modifier.height(28.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                EditorDialogButton("Set as Wallpaper", Color.White, accentColor, onSaveAndSet)
-                EditorDialogButton("Save to Gallery", contentColor, buttonBgColor, onSaveAndDownload)
-                EditorDialogButton("Save Preset Only", contentColor, buttonBgColor, onSaveOnly)
-                EditorDialogButton("Cancel", Color(0xFFFF3B30), buttonBgColor, onCancel)
-            }
-        }
-    }
-}
-
-@Composable
-fun EditorDialogButton(label: String, textColor: Color, backgroundColor: Color, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .clip(Capsule())
-            .background(backgroundColor)
-            .clickable { onClick() },
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, color = textColor, fontSize = 16.sp, fontWeight = FontWeight.Medium)
     }
 }
