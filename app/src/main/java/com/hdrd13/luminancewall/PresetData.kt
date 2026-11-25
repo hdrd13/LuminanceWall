@@ -7,7 +7,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.unit.Dp
 import androidx.core.content.edit
 
-data class Preset(val name: String, val colors: List<Color>, val category: String = "Community")
+data class Preset(val name: String, val colors: List<Color>, val category: String = "Community", val isCommunity: Boolean = false)
 
 data class EditorSource(val bounds: Rect, val cornerRadius: Dp)
 
@@ -43,7 +43,7 @@ val DEFAULT_PRESETS = listOf(
 fun saveCustomPresets(prefs: SharedPreferences, presets: List<Preset>) {
     val serialized = presets.joinToString(separator = "|") { preset ->
         val colorString = preset.colors.joinToString(",") { it.toArgb().toString() }
-        "${preset.name}#$colorString"
+        "${preset.name}#$colorString#${preset.isCommunity}"
     }
     prefs.edit { putString("custom_presets", serialized) }
 }
@@ -54,7 +54,8 @@ fun loadCustomPresets(prefs: SharedPreferences): List<Preset> {
     return try {
         serialized.split("|").map { presetStr ->
             val parts = presetStr.split("#")
-            Preset(parts[0], parts[1].split(",").map { Color(it.toInt()) })
+            val isComm = parts.getOrNull(2)?.toBooleanStrictOrNull() ?: false
+            Preset(parts[0], parts[1].split(",").map { Color(it.toInt()) }, isCommunity = isComm)
         }
     } catch (_: Exception) { emptyList() }
 }

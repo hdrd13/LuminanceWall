@@ -92,6 +92,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun EditorScreen(
     initialColors: List<Color>,
     isEditable: Boolean,
+    isCommunity: Boolean = false,
     cornerRadius: androidx.compose.ui.unit.Dp = 0.dp,
     source: EditorSource? = null,
     sourceScale: Float = 0.701f,
@@ -105,6 +106,7 @@ fun EditorScreen(
     val isDefaultPreset = remember(initialColors) { DEFAULT_PRESETS.any { it.colors == initialColors } }
 
     var selectedColors by remember { mutableStateOf(initialColors) }
+    var hasChanges by remember { mutableStateOf(false) }
     var isProcessing by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     var isPickerVisible by remember { mutableStateOf(false) }
@@ -130,6 +132,9 @@ fun EditorScreen(
         } else initialColors
     }
     val isModified = renderColors != initialRenderColors
+    val isNewPreset = remember(initialColors, isEditable, isDefaultPreset) {
+        !isDefaultPreset && isEditable && initialColors.size == 1
+    }
 
     val animatedColorCount by animateFloatAsState(
         targetValue = renderColors.size.toFloat(),
@@ -299,7 +304,7 @@ fun EditorScreen(
                     ) { backdrop, close ->
                         GlasmioMenuItem("Set as Wallpaper", {
                             menuExpanded = false
-                            if (isModified) {
+                            if (isModified || hasChanges || isNewPreset || isCommunity) {
                                 onSavePreset(renderColors)
                             }
                             isProcessing = true
@@ -316,7 +321,7 @@ fun EditorScreen(
 
                         GlasmioMenuItem("Save to Gallery", {
                             menuExpanded = false
-                            if (isModified) {
+                            if (isModified || hasChanges || isNewPreset || isCommunity) {
                                 onSavePreset(renderColors)
                             }
                             isProcessing = true
@@ -386,6 +391,7 @@ fun EditorScreen(
                                 onClick = {
                                     if (selectedColors.size > 1) selectedColors = selectedColors.shuffled()
                                     else singleColorShades = singleColorShades.shuffled()
+                                    hasChanges = true
                                 },
                                 modifier = Modifier.size(49.dp),
                                 navigationSurfaceAlphaMultiplier = 1f,
@@ -408,7 +414,7 @@ fun EditorScreen(
                     }
 
                     AnimatedVisibility(
-                        visible = isPickerVisible && !zoomingOut,
+                        visible = isEditable && isPickerVisible && !zoomingOut,
                         enter = fadeIn(tween(180)) + scaleIn(
                             animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
                             initialScale = 0.16f,
@@ -423,7 +429,10 @@ fun EditorScreen(
                         Box(modifier = Modifier.onGloballyPositioned { pickerBounds = it.boundsInRoot() }) {
                             EditorColorPicker(
                                 selectedColors = selectedColors,
-                                onColorsChanged = { selectedColors = it },
+                                onColorsChanged = {
+                                    selectedColors = it
+                                    hasChanges = true
+                                },
                                 singleColorShades = singleColorShades,
                                 onShadesChanged = { singleColorShades = it },
                                 context = context

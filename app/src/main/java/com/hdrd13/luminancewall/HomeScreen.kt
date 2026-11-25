@@ -117,13 +117,13 @@ fun HomeScreen(
     val pageFloat by remember {
         derivedStateOf { pagerState.currentPage + pagerState.currentPageOffsetFraction }
     }
-    val editFade by remember {
+    val editFade by remember(defaultPresets.size, allPresets.size) {
         derivedStateOf {
             ((pageFloat - (defaultPresets.size - 0.5f)) / 0.5f).coerceIn(0f, 1f) *
                     (1f - ((pageFloat - (allPresets.size - 0.5f)) / 0.5f).coerceIn(0f, 1f))
         }
     }
-    val newFade by remember {
+    val newFade by remember(allPresets.size) {
         derivedStateOf {
             ((pageFloat - (allPresets.size - 0.5f)) / 0.5f).coerceIn(0f, 1f)
         }
@@ -160,6 +160,15 @@ fun HomeScreen(
     val dotsToBarGap = 18.dp
     val dotsBottomPadding = bottomBarPadding + buttonHeight + dotsToBarGap
     val reservedBottomSpace = dotsBottomPadding + 7.dp + dotsToBarGap
+
+    var prevCustomCount by remember { mutableStateOf(customPresets.size) }
+    LaunchedEffect(customPresets.size) {
+        if (customPresets.size > prevCustomCount) {
+            val newPresetIndex = defaultPresets.size + customPresets.lastIndex
+            pagerState.animateScrollToPage(newPresetIndex)
+        }
+        prevCustomCount = customPresets.size
+    }
 
     GlasmioBackdropHost(
         modifier = Modifier

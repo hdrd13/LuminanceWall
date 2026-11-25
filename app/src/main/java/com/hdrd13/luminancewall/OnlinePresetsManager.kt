@@ -27,7 +27,7 @@ object OnlinePresetsManager {
         return try {
             serialized.split("|").map { presetStr ->
                 val parts = presetStr.split("#")
-                Preset(parts[0], parts[1].split(",").map { Color(it.toInt()) })
+                Preset(parts[0], parts[1].split(",").map { Color(it.toInt()) }, isCommunity = true)
             }
         } catch (_: Exception) { emptyList() }
     }
@@ -70,7 +70,7 @@ object OnlinePresetsManager {
                     colors.add(color)
                 }
                 val category = obj.optString("category", "Community").ifBlank { "Community" }
-                list.add(Preset(name, colors, category))
+                list.add(Preset(name, colors, category, isCommunity = true))
             }
         } catch (e: Exception) {
             e.printStackTrace()

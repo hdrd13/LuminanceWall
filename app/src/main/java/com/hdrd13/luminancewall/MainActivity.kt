@@ -216,6 +216,7 @@ private fun buildSfTypography(baseFont: NativeFont, italicFont: NativeFont?): Ty
 private data class EditorSession(
     val initialColors: List<Color>,
     val isEditable: Boolean,
+    val isCommunity: Boolean = false,
     val source: EditorSource?,
     val presetName: String? = null,
 )
@@ -246,7 +247,8 @@ fun LuminanceAppRoot() {
 
     val scope = rememberCoroutineScope()
     val prefs = context.getSharedPreferences("Presets", Context.MODE_PRIVATE)
-    var customPresets by remember { mutableStateOf(loadCustomPresets(prefs)) }
+    val customPresetsState = remember { mutableStateOf(loadCustomPresets(prefs)) }
+    var customPresets by customPresetsState
     var activeEditor by remember { mutableStateOf<EditorSession?>(null) }
 
     var galleryPresets by remember { mutableStateOf<List<Preset>>(emptyList()) }
@@ -310,11 +312,12 @@ fun LuminanceAppRoot() {
                         "home" -> {
                             HomeScreen(
                                 defaultPresets = DEFAULT_PRESETS,
-                                customPresets = customPresets,
+                                customPresets = customPresetsState.value,
                                 onPresetClick = { preset, source ->
                                     activeEditor = EditorSession(
                                         initialColors = preset.colors,
-                                        isEditable = customPresets.any { it == preset },
+                                        isEditable = !preset.isCommunity && customPresets.any { it == preset },
+                                        isCommunity = preset.isCommunity,
                                         source = source,
                                         presetName = preset.name,
                                     )
@@ -356,7 +359,7 @@ fun LuminanceAppRoot() {
                                 onBack = { navigateBack() },
                                 onSavePreset = { preset ->
                                     if (!customPresets.any { it.colors == preset.colors }) {
-                                        val newPreset = Preset(preset.name, preset.colors)
+                                        val newPreset = Preset(preset.name, preset.colors, isCommunity = true)
                                         customPresets = customPresets + newPreset
                                         saveCustomPresets(prefs, customPresets)
                                     }
@@ -365,6 +368,7 @@ fun LuminanceAppRoot() {
                                     activeEditor = EditorSession(
                                         initialColors = preset.colors,
                                         isEditable = false,
+                                        isCommunity = true,
                                         source = source,
                                         presetName = preset.name,
                                     )
@@ -381,6 +385,7 @@ fun LuminanceAppRoot() {
                 EditorScreen(
                     initialColors = session.initialColors,
                     isEditable = session.isEditable,
+                    isCommunity = session.isCommunity,
                     cornerRadius = deviceCornerRadius,
                     source = session.source,
                     sourceScale = 0.7007f,
@@ -388,17 +393,30 @@ fun LuminanceAppRoot() {
                     onBack = { activeEditor = null },
                     onSavePreset = { colors ->
                         val rawName = session.presetName?.takeIf { it.isNotBlank() }
-                        val finalName = when {
-                            rawName == null -> "My Preset ${customPresets.size + 1}"
-                            DEFAULT_PRESETS.any { it.name == rawName } || customPresets.any { it.name == rawName } -> {
-                                var idx = 2
-                                while (customPresets.any { it.name == "$rawName $idx" }) idx++
-                                "$rawName $idx"
-                            }
-                            else -> rawName
+                        val existingCustomIndex = if (session.isEditable && rawName != null) {
+                            customPresets.indexOfFirst { it.name == rawName }
+                        } else -1
+
+                        if (session.isCommunity && customPresets.any { it.isCommunity && it.colors == colors }) {
+                            return@EditorScreen
                         }
-                        val newPreset = Preset(finalName, colors)
-                        customPresets = customPresets + newPreset
+
+                        if (existingCustomIndex >= 0) {
+                            customPresets = customPresets.mapIndexed { index, preset ->
+                                if (index == existingCustomIndex) preset.copy(colors = colors) else preset
+                            }
+                        } else {
+                            val finalName = when {
+                                rawName == null -> "My Preset ${customPresets.size + 1}"
+                                DEFAULT_PRESETS.any { it.name == rawName } || customPresets.any { it.name == rawName } -> {
+                                    var idx = 2
+                                    while (customPresets.any { it.name == "$rawName $idx" }) idx++
+                                    "$rawName $idx"
+                                }
+                                else -> rawName
+                            }
+                            customPresets = customPresets + Preset(finalName, colors, isCommunity = session.isCommunity)
+                        }
                         saveCustomPresets(prefs, customPresets)
                     }
                 )
