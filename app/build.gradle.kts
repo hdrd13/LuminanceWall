@@ -42,8 +42,8 @@ android {
         applicationId = "com.hdrd13.luminancewall"
         minSdk = 33
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.1"
+        versionCode = 2
+        versionName = "2.0"
     }
 
     buildTypes {
@@ -81,7 +81,7 @@ dependencies {
 }
 
 base {
-    archivesName.set("LuminanceWall-v1.2-beta")
+    archivesName.set("LuminanceWall-v2.0")
 }
 
 abstract class GenerateSymbolFont : DefaultTask() {
