@@ -326,7 +326,7 @@ fun EditorScreen(
                                     isProcessing = false
                                     if (uri != null) {
                                         Toast.makeText(context, "Saved to Gallery", Toast.LENGTH_SHORT).show()
-                                        delay(220.milliseconds)
+                                        delay(600.milliseconds)
                                         requestBack()
                                     }
                                 }
@@ -338,7 +338,7 @@ fun EditorScreen(
                             onSavePreset(renderColors)
                             Toast.makeText(context, "Saved to Presets", Toast.LENGTH_SHORT).show()
                             coroutineScope.launch {
-                                delay(220.milliseconds)
+                                delay(600.milliseconds)
                                 requestBack()
                             }
                         }, systemName = "bookmark", backdrop = backdrop)
