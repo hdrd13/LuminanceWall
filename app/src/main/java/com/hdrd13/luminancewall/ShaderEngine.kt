@@ -149,7 +149,8 @@ const val AGSL_SHADER = """
         // measure ≈2px at 294-scale for ALL boundaries incl. the mirror;
         // blending column COLORS keeps edges vertical (no rainbow seam
         // even across the mirror, since phases are never interpolated)
-        float colBlend = smoothstep(0.96, 1.0, cellF);
+        float edge = clamp(1.8 * fCols / resolution.x, 0.005, 0.035);
+        float colBlend = smoothstep(1.0 - edge, 1.0, cellF);
 
         float yScroll = uv.y - time * 0.08;
         float3 colA = rampColor(3.30 + d0 - yScroll * 4.12, colorCount);
