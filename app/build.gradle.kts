@@ -117,11 +117,11 @@ val symbolFontPath: String? = (providers.gradleProperty("glasmio.symbolFont").or
 
 val generateSymbolFont = tasks.register<GenerateSymbolFont>("generateSymbolFont") {
     symbolFontPath?.let { sourceFont.set(layout.file(provider { File(it) })) }
-    outputDirectory.set(layout.buildDirectory.dir("generated/symbol-font/debug/assets"))
+    outputDirectory.set(layout.buildDirectory.dir("generated/symbol-font/assets"))
 }
 
 androidComponents {
-    onVariants(selector().withBuildType("debug")) { variant ->
+    onVariants { variant ->
         variant.sources.assets?.addGeneratedSourceDirectory(
             generateSymbolFont,
             GenerateSymbolFont::outputDirectory,
